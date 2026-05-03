@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang='de'>
+<head>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>Amahs Lieblings Modi</title>
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#000,#2b0a3d,#6a0032);color:#fff;padding:20px}
+.wrap{max-width:900px;margin:auto}
+.card{background:rgba(255,255,255,.08);padding:18px;border-radius:18px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:700px){.grid{grid-template-columns:1fr 1fr}}
+input,button{padding:10px;border-radius:10px;border:none}
+button{background:#ff4da6;color:#fff;font-weight:bold;cursor:pointer}
+.score{font-size:28px;font-weight:bold}
+.name{font-size:24px;font-weight:bold}
+.small{opacity:.8;font-size:14px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.copybtn{background:#4da6ff}
+</style>
+</head>
+
+<body>
+<div class='wrap'>
+
+<h1 style='text-align:center'>Amahs Lieblings Modi 🔥</h1>
+
+<div class='card'>
+<h2>Countdown bis 20.12.2026</h2>
+<div id='countdown' class='score'></div>
+</div>
+
+<div id='list' class='grid'></div>
+
+<div class='card'>
+<h2>🔒 Admin Panel</h2>
+
+<div id='login'>
+<input type='password' id='pw' placeholder='Admin Passwort' onkeydown='if(event.key=="Enter") login()'>
+<button onclick='login()'>Login</button>
+</div>
+
+<div id='admin'></div>
+
+<div class='actions'>
+<button class='copybtn' onclick='copyLink()'>🔗 Link kopieren</button>
+</div>
+
+<p class='small'>Alle nutzen denselben Link = gleicher Stand für alle.</p>
+
+</div>
+
+</div>
+
+<script>
+
+const PASS = atob('U29waGlhMjAyNiE=');
+const names = ['Janina','Snow','FacetimeLove','Steps'];
+
+let admin = false;
+
+function loadFromURL(){
+  const params = new URLSearchParams(window.location.search);
+  const data = params.get("data");
+
+  if(!data){
+    return Object.fromEntries(names.map(n=>[n,10000]));
+  }
+
+  const obj = {};
+  data.split(",").forEach(pair=>{
+    const [n,v] = pair.split(":");
+    obj[n] = parseInt(v)||0;
+  });
+
+  return obj;
+}
+
+let scores = loadFromURL();
+
+function save(){
+  const str = Object.entries(scores)
+    .map(([n,v])=>`${n}:${v}`)
+    .join(",");
+
+  const newUrl = window.location.pathname + "?data=" + str;
+
+  window.history.replaceState({}, "", newUrl);
+}
+
+function safeId(n){
+  return n.replace(/\s/g,"_");
+}
+
+function render(){
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+
+  Object.entries(scores)
+    .sort((a,b)=>b[1]-a[1])
+    .forEach(([n,s],i)=>{
+
+      list.innerHTML += `
+      <div class='card'>
+        <div class='name'>${i==0?'👑 ':''}${n}</div>
+        <div class='score'>${s}</div>
+
+        ${admin?`
+          <input id='amt_${safeId(n)}' type='number' placeholder='Punkte' onkeydown='if(event.key=="Enter") quickChange("${n}")'>
+          <button onclick="deduct('${n}')">-</button>
+          <button onclick="addPts('${n}')">+</button>
+        `:''}
+
+      </div>`;
+    });
+}
+
+function login(){
+  if(document.getElementById('pw').value === PASS){
+    admin = true;
+    document.getElementById('login').innerHTML = '✅ Admin aktiv';
+    render();
+  }
+}
+
+function quickChange(n){
+  const el = document.getElementById('amt_'+safeId(n));
+  const raw = (el.value||'').trim();
+  if(!raw) return;
+
+  let v = parseInt(raw.replace('+',''));
+  if(isNaN(v)) return;
+
+  if(raw.startsWith('-')){
+    scores[n] = Math.max(0, scores[n] - Math.abs(v));
+  } else {
+    scores[n] = scores[n] + Math.abs(v);
+  }
+
+  el.value='';
+  save();
+  render();
+}
+
+function addPts(n){
+  const v = parseInt(document.getElementById('amt_'+safeId(n)).value || 0);
+  if(v>0){
+    scores[n] += v;
+    save();
+    render();
+  }
+}
+
+function deduct(n){
+  const v = parseInt(document.getElementById('amt_'+safeId(n)).value || 0);
+  if(v>0){
+    scores[n] = Math.max(0, scores[n] - v);
+    save();
+    render();
+  }
+}
+
+function copyLink(){
+  navigator.clipboard.writeText(window.location.href);
+  alert("Link kopiert! Teile ihn mit allen 🔥");
+}
+
+// "Fast Live" Refresh
+setInterval(()=>{
+  const newScores = loadFromURL();
+  if(JSON.stringify(newScores) !== JSON.stringify(scores)){
+    scores = newScores;
+    render();
+  }
+},2000);
+
+function tick(){
+  const t = new Date('2026-12-20T00:00:00') - new Date();
+  const d = Math.max(0,Math.floor(t/86400000));
+  const h = Math.floor(t%86400000/3600000);
+  const m = Math.floor(t%3600000/60000);
+  const s = Math.floor(t%60000/1000);
+  document.getElementById('countdown').innerText = `${d}T ${h}h ${m}m ${s}s`;
+}
+
+setInterval(tick,1000);
+tick();
+render();
+
+</script>
+
+</body>
+</html>
